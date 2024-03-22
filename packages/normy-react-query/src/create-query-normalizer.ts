@@ -16,21 +16,6 @@ const shouldBeNormalized = (
   return localNormalize;
 };
 
-const updateQueriesFromMutationData = (
-  mutationData: Data,
-  normalizer: ReturnType<typeof createNormalizer>,
-  queryClient: QueryClient,
-) => {
-  const queriesToUpdate = normalizer.getQueriesToUpdate(mutationData);
-
-  queriesToUpdate.forEach(query => {
-    queryClient.setQueryData(
-      JSON.parse(query.queryKey) as QueryKey,
-      () => query.data,
-    );
-  });
-};
-
 export const createQueryNormalizer = (
   queryClient: QueryClient,
   normalizerConfig: Omit<NormalizerConfig, 'structuralSharing'> & {
@@ -43,7 +28,25 @@ export const createQueryNormalizer = (
   let unsubscribeQueryCache: null | (() => void) = null;
   let unsubscribeMutationCache: null | (() => void) = null;
 
+  // prevent reentrant query updates when calling setQueryData ourselves
   let skipReentrantQueryUpdates = false;
+
+  const updateQueriesFromMutationData = (
+    mutationData: Data,
+    normalizer: ReturnType<typeof createNormalizer>,
+    queryClient: QueryClient,
+  ) => {
+    const queriesToUpdate = normalizer.getQueriesToUpdate(mutationData);
+  
+    skipReentrantQueryUpdates = true;
+    queriesToUpdate.forEach(query => {
+      queryClient.setQueryData(
+        JSON.parse(query.queryKey) as QueryKey,
+        () => query.data,
+      );
+    });
+    skipReentrantQueryUpdates = false;
+  };
 
   return {
     getNormalizedData: normalizer.getNormalizedData,
@@ -63,15 +66,11 @@ export const createQueryNormalizer = (
             event.query.meta?.normalize as boolean | undefined,
           )
         ) {
-          if (!skipReentrantQueryUpdates) {
-            skipReentrantQueryUpdates = true;
-            updateQueriesFromMutationData(
-              event.action.data as Data, 
-              normalizer, 
-              queryClient
-            );
-            skipReentrantQueryUpdates = false;
-          }
+          updateQueriesFromMutationData(
+            event.action.data as Data, 
+            normalizer, 
+            queryClient
+          );
           normalizer.setQuery(
             JSON.stringify(event.query.queryKey),
             event.action.data as Data,
