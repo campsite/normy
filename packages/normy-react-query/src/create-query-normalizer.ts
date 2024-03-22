@@ -43,6 +43,8 @@ export const createQueryNormalizer = (
   let unsubscribeQueryCache: null | (() => void) = null;
   let unsubscribeMutationCache: null | (() => void) = null;
 
+  let skipReentrantQueryUpdates = false;
+
   return {
     getNormalizedData: normalizer.getNormalizedData,
     setNormalizedData: (data: Data) =>
@@ -61,6 +63,15 @@ export const createQueryNormalizer = (
             event.query.meta?.normalize as boolean | undefined,
           )
         ) {
+          if (!skipReentrantQueryUpdates) {
+            skipReentrantQueryUpdates = true;
+            updateQueriesFromMutationData(
+              event.action.data as Data, 
+              normalizer, 
+              queryClient
+            );
+            skipReentrantQueryUpdates = false;
+          }
           normalizer.setQuery(
             JSON.stringify(event.query.queryKey),
             event.action.data as Data,
