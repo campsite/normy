@@ -1,9 +1,9 @@
 node_modules
 yarn-error.log
 lerna-debug.log
-dist
-es
-lib
+# dist
+# es
+# lib
 .nyc_output
 coverage
 *.tgz
