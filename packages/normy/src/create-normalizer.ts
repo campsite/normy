@@ -23,6 +23,10 @@ const isMutationObjectDifferent = (
       return normalizedData.length !== 0;
     }
 
+    if (mutationData.length !== normalizedData.length) {
+      return true;
+    }
+
     return mutationData.some((v, i) =>
       isMutationObjectDifferent(v, (normalizedData as Data[])[i]),
     );
